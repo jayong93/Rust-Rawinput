@@ -1,7 +1,7 @@
 use super::inner_window::*;
-use std::sync::mpsc;
+use tokio::sync::mpsc;
 use winapi::shared::windef::HWND;
-use winapi::um::winuser::CloseWindow;
+use std::future::Future;
 
 #[derive(Debug, Clone)]
 pub enum KeyState {
@@ -17,20 +17,22 @@ pub enum Input {
 }
 
 pub struct Receiver {
-    input_recevier: mpsc::Receiver<(Input, KeyState)>,
+    input_recevier: mpsc::UnboundedReceiver<(Input, KeyState)>,
+    runtime: tokio::runtime::current_thread::Runtime,
 }
 
 impl Receiver {
     pub fn new() -> Self {
-        let (sender, receiver) = mpsc::channel();
+        let (sender, receiver) = mpsc::unbounded_channel();
         std::thread::spawn(Self::message_loop_fn(sender));
 
         Self {
             input_recevier: receiver,
+            runtime: tokio::runtime::current_thread::Runtime::new().unwrap(),
         }
     }
 
-    fn message_loop_fn(sender: mpsc::Sender<(Input, KeyState)>) -> impl FnOnce() {
+    fn message_loop_fn(sender: mpsc::UnboundedSender<(Input, KeyState)>) -> impl FnOnce() {
         use winapi::shared::ntdef::TRUE;
         use winapi::um::winuser::*;
         move || {
@@ -45,10 +47,13 @@ impl Receiver {
         }
     }
 
-    pub fn try_get(&self) -> Option<(Input, KeyState)> {
-        self.input_recevier.try_recv().ok()
+    #[inline]
+    pub fn get(&mut self) -> Option<(Input, KeyState)> {
+        self.runtime.block_on(self.input_recevier.recv())
     }
-    pub fn get(&self) -> Result<(Input, KeyState), String> {
-        self.input_recevier.recv().map_err(|e| format!("{}", e))
+
+    #[inline]
+    pub fn get_async<'a>(&'a mut self) -> impl Future<Output=Option<(Input, KeyState)>> + 'a {
+        self.input_recevier.recv()
     }
 }

@@ -1,10 +1,9 @@
 use super::input_receiver::{Input, KeyState};
-use lazy_static::lazy_static;
 use std::ffi::OsStr;
 use std::mem::size_of;
 use std::os::windows::ffi::OsStrExt;
 use std::ptr::null_mut;
-use std::sync::{mpsc::Sender, Mutex};
+use tokio::sync::mpsc::UnboundedSender as Sender;
 use winapi::shared::minwindef::{BOOL, LPARAM, LRESULT, WPARAM};
 use winapi::shared::ntdef::NULL;
 use winapi::shared::windef::HWND;
@@ -41,7 +40,7 @@ unsafe extern "system" fn wnd_proc(
                 size_of::<RAWINPUTHEADER>() as u32,
             );
 
-            let sender = SENDER.as_ref().unwrap();
+            let sender = SENDER.as_mut().unwrap();
             let raw_input = &*(input_bytes.as_ptr() as *const RAWINPUT);
             match raw_input.header.dwType {
                 RIM_TYPEKEYBOARD => {
@@ -50,7 +49,7 @@ unsafe extern "system" fn wnd_proc(
                         RI_KEY_MAKE => {
                             // if the key has pressed
                             sender
-                                .send((
+                                .try_send((
                                     Input::KeyBoard(raw_keyboard_input.VKey as i32),
                                     KeyState::Down,
                                 ))
@@ -58,7 +57,7 @@ unsafe extern "system" fn wnd_proc(
                         }
                         RI_KEY_BREAK => {
                             sender
-                                .send((
+                                .try_send((
                                     Input::KeyBoard(raw_keyboard_input.VKey as i32),
                                     KeyState::Up,
                                 ))
@@ -71,38 +70,38 @@ unsafe extern "system" fn wnd_proc(
                     let raw_mouse_input = raw_input.data.mouse();
                     match raw_mouse_input.usButtonFlags {
                         RI_MOUSE_LEFT_BUTTON_DOWN => {
-                            sender.send((Input::Mouse(VK_LBUTTON), KeyState::Down)).ok();
+                            sender.try_send((Input::Mouse(VK_LBUTTON), KeyState::Down)).ok();
                         }
                         RI_MOUSE_LEFT_BUTTON_UP => {
-                            sender.send((Input::Mouse(VK_LBUTTON), KeyState::Up)).ok();
+                            sender.try_send((Input::Mouse(VK_LBUTTON), KeyState::Up)).ok();
                         }
                         RI_MOUSE_RIGHT_BUTTON_DOWN => {
-                            sender.send((Input::Mouse(VK_RBUTTON), KeyState::Down)).ok();
+                            sender.try_send((Input::Mouse(VK_RBUTTON), KeyState::Down)).ok();
                         }
                         RI_MOUSE_RIGHT_BUTTON_UP => {
-                            sender.send((Input::Mouse(VK_RBUTTON), KeyState::Up)).ok();
+                            sender.try_send((Input::Mouse(VK_RBUTTON), KeyState::Up)).ok();
                         }
                         RI_MOUSE_MIDDLE_BUTTON_DOWN => {
-                            sender.send((Input::Mouse(VK_MBUTTON), KeyState::Down)).ok();
+                            sender.try_send((Input::Mouse(VK_MBUTTON), KeyState::Down)).ok();
                         }
                         RI_MOUSE_MIDDLE_BUTTON_UP => {
-                            sender.send((Input::Mouse(VK_MBUTTON), KeyState::Up)).ok();
+                            sender.try_send((Input::Mouse(VK_MBUTTON), KeyState::Up)).ok();
                         }
                         RI_MOUSE_BUTTON_4_DOWN => {
                             sender
-                                .send((Input::Mouse(VK_XBUTTON1), KeyState::Down))
+                                .try_send((Input::Mouse(VK_XBUTTON1), KeyState::Down))
                                 .ok();
                         }
                         RI_MOUSE_BUTTON_4_UP => {
-                            sender.send((Input::Mouse(VK_XBUTTON1), KeyState::Up)).ok();
+                            sender.try_send((Input::Mouse(VK_XBUTTON1), KeyState::Up)).ok();
                         }
                         RI_MOUSE_BUTTON_5_DOWN => {
                             sender
-                                .send((Input::Mouse(VK_XBUTTON2), KeyState::Down))
+                                .try_send((Input::Mouse(VK_XBUTTON2), KeyState::Down))
                                 .ok();
                         }
                         RI_MOUSE_BUTTON_5_UP => {
-                            sender.send((Input::Mouse(VK_XBUTTON2), KeyState::Up)).ok();
+                            sender.try_send((Input::Mouse(VK_XBUTTON2), KeyState::Up)).ok();
                         }
                         _ => {}
                     }
@@ -151,10 +150,10 @@ pub fn make_blank_window(sender: Sender<(Input, KeyState)>) -> HWND {
 //     let key_struct = &*(l_param as *const KBDLLHOOKSTRUCT);
 //     match w_param as u32 {
 //         WM_KEYDOWN => {
-//             sender.send((Input::KeyBoard(key_struct.vkCode as i32), KeyState::Down)).ok();
+//             sender.try_send((Input::KeyBoard(key_struct.vkCode as i32), KeyState::Down)).ok();
 //         },
 //         WM_KEYUP => {
-//             sender.send((Input::KeyBoard(key_struct.vkCode as i32), KeyState::Up)).ok();
+//             sender.try_send((Input::KeyBoard(key_struct.vkCode as i32), KeyState::Up)).ok();
 //         },
 //         _ => {}
 //     }
@@ -191,7 +190,7 @@ mod tests {
     use super::*;
     use std::ffi::OsString;
     use std::os::windows::ffi::OsStringExt;
-    use std::sync::mpsc;
+    use tokio::sync::mpsc;
     use winapi::shared::minwindef::DWORD;
     use winapi::shared::ntdef::{LANG_NEUTRAL, MAKELANGID, SUBLANG_DEFAULT};
     use winapi::um::errhandlingapi::GetLastError;
@@ -216,7 +215,7 @@ mod tests {
 
     #[test]
     fn check_window_created() {
-        let (sender, _) = mpsc::channel();
+        let (sender, _) = mpsc::unbounded_channel();
         let hwnd = make_blank_window(sender);
         if hwnd == null_mut() {
             unsafe { panic!("{:?}", error_to_string(GetLastError()).to_str()) }
@@ -225,7 +224,7 @@ mod tests {
 
     #[test]
     fn check_registering() {
-        let (sender, _) = mpsc::channel();
+        let (sender, _) = mpsc::unbounded_channel();
         let hwnd = make_blank_window(sender);
         unsafe {
             assert_ne!(register_raw_devices(hwnd), 0);
