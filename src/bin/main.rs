@@ -1,8 +1,11 @@
 use rust_rawinput::Receiver;
 fn main() {
     let mut receiver = Receiver::new();
-    loop {
-        let input = receiver.get();
-        println!("{:?}", input);
-    }
+    let mut runtime = tokio::runtime::current_thread::Runtime::new().unwrap();
+    runtime.block_on(async {
+        loop {
+            let input = receiver.get_async().await;
+            println!("{:?}", input);
+        }
+    });
 }

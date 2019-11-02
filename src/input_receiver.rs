@@ -18,7 +18,6 @@ pub enum Input {
 
 pub struct Receiver {
     input_recevier: mpsc::UnboundedReceiver<(Input, KeyState)>,
-    runtime: tokio::runtime::current_thread::Runtime,
 }
 
 impl Receiver {
@@ -28,7 +27,6 @@ impl Receiver {
 
         Self {
             input_recevier: receiver,
-            runtime: tokio::runtime::current_thread::Runtime::new().unwrap(),
         }
     }
 
@@ -45,11 +43,6 @@ impl Receiver {
                 CloseWindow(hwnd);
             }
         }
-    }
-
-    #[inline]
-    pub fn get(&mut self) -> Option<(Input, KeyState)> {
-        self.runtime.block_on(self.input_recevier.recv())
     }
 
     #[inline]
