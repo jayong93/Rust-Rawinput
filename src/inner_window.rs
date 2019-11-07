@@ -21,6 +21,7 @@ unsafe extern "system" fn wnd_proc(
     match msg {
         WM_CREATE => {
             assert!(SENDER.is_some());
+            DefWindowProcW(hwnd, msg, w_param, l_param)
         }
         WM_INPUT => {
             let mut input_size = 0u32;
@@ -108,11 +109,10 @@ unsafe extern "system" fn wnd_proc(
                 }
                 _ => {}
             }
+            0
         }
-        _ => {}
+        _ => DefWindowProcW(hwnd, msg, w_param, l_param) 
     }
-
-    DefWindowProcW(hwnd, msg, w_param, l_param)
 }
 
 pub fn make_blank_window(sender: Sender<(Input, KeyState)>) -> HWND {
@@ -169,13 +169,13 @@ unsafe fn register_raw_devices(hwnd: HWND) -> BOOL {
     let mouse_dev = &mut device_vec[0];
     mouse_dev.usUsagePage = 1;
     mouse_dev.usUsage = 2;
-    mouse_dev.dwFlags = RIDEV_INPUTSINK | RIDEV_NOLEGACY;
+    mouse_dev.dwFlags = RIDEV_INPUTSINK;
     mouse_dev.hwndTarget = hwnd;
 
     let keyboard_dev = &mut device_vec[1];
     keyboard_dev.usUsagePage = 1;
     keyboard_dev.usUsage = 6;
-    keyboard_dev.dwFlags = RIDEV_INPUTSINK | RIDEV_NOLEGACY;
+    keyboard_dev.dwFlags = RIDEV_INPUTSINK;
     keyboard_dev.hwndTarget = hwnd;
 
     RegisterRawInputDevices(
