@@ -68,50 +68,31 @@ unsafe extern "system" fn wnd_proc(
                     }
                 }
                 RIM_TYPEMOUSE => {
+                    static MOUSE_DATA_LIST: [(Input, KeyState); 10] = [
+                        (Input::Mouse(VK_LBUTTON), KeyState::Down),
+                        (Input::Mouse(VK_LBUTTON), KeyState::Up),
+                        (Input::Mouse(VK_RBUTTON), KeyState::Down),
+                        (Input::Mouse(VK_RBUTTON), KeyState::Up),
+                        (Input::Mouse(VK_MBUTTON), KeyState::Down),
+                        (Input::Mouse(VK_MBUTTON), KeyState::Up),
+                        (Input::Mouse(VK_XBUTTON1), KeyState::Down),
+                        (Input::Mouse(VK_XBUTTON1), KeyState::Up),
+                        (Input::Mouse(VK_XBUTTON2), KeyState::Down),
+                        (Input::Mouse(VK_XBUTTON2), KeyState::Up),
+                    ];
                     let raw_mouse_input = raw_input.data.mouse();
-                    match raw_mouse_input.usButtonFlags {
-                        RI_MOUSE_LEFT_BUTTON_DOWN => {
-                            sender.try_send((Input::Mouse(VK_LBUTTON), KeyState::Down)).ok();
+                    MOUSE_DATA_LIST.iter().fold(1, |acc, data| {
+                        if raw_mouse_input.usButtonFlags & acc != 0 {
+                            sender.try_send(data.clone()).ok();
                         }
-                        RI_MOUSE_LEFT_BUTTON_UP => {
-                            sender.try_send((Input::Mouse(VK_LBUTTON), KeyState::Up)).ok();
-                        }
-                        RI_MOUSE_RIGHT_BUTTON_DOWN => {
-                            sender.try_send((Input::Mouse(VK_RBUTTON), KeyState::Down)).ok();
-                        }
-                        RI_MOUSE_RIGHT_BUTTON_UP => {
-                            sender.try_send((Input::Mouse(VK_RBUTTON), KeyState::Up)).ok();
-                        }
-                        RI_MOUSE_MIDDLE_BUTTON_DOWN => {
-                            sender.try_send((Input::Mouse(VK_MBUTTON), KeyState::Down)).ok();
-                        }
-                        RI_MOUSE_MIDDLE_BUTTON_UP => {
-                            sender.try_send((Input::Mouse(VK_MBUTTON), KeyState::Up)).ok();
-                        }
-                        RI_MOUSE_BUTTON_4_DOWN => {
-                            sender
-                                .try_send((Input::Mouse(VK_XBUTTON1), KeyState::Down))
-                                .ok();
-                        }
-                        RI_MOUSE_BUTTON_4_UP => {
-                            sender.try_send((Input::Mouse(VK_XBUTTON1), KeyState::Up)).ok();
-                        }
-                        RI_MOUSE_BUTTON_5_DOWN => {
-                            sender
-                                .try_send((Input::Mouse(VK_XBUTTON2), KeyState::Down))
-                                .ok();
-                        }
-                        RI_MOUSE_BUTTON_5_UP => {
-                            sender.try_send((Input::Mouse(VK_XBUTTON2), KeyState::Up)).ok();
-                        }
-                        _ => {}
-                    }
+                        acc << 1
+                    });
                 }
                 _ => {}
             }
             0
         }
-        _ => DefWindowProcW(hwnd, msg, w_param, l_param) 
+        _ => DefWindowProcW(hwnd, msg, w_param, l_param),
     }
 }
 
