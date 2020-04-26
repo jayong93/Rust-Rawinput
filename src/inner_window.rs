@@ -1,16 +1,16 @@
 use super::input_receiver::{Input, KeyState};
 use std::ffi::OsStr;
-use std::mem::size_of;
+use std::mem::{size_of, MaybeUninit};
 use std::os::windows::ffi::OsStrExt;
 use std::ptr::null_mut;
-use tokio::sync::mpsc::UnboundedSender as Sender;
+use std::sync::mpsc::{Sender};
 use winapi::shared::minwindef::{BOOL, LPARAM, LRESULT, WPARAM};
 use winapi::shared::ntdef::NULL;
 use winapi::shared::windef::HWND;
 use winapi::um::libloaderapi::GetModuleHandleW;
 use winapi::um::winuser::*;
 
-static mut SENDER: Option<Sender<(Input, KeyState)>> = None;
+static mut SENDER: MaybeUninit<Sender<(Input, KeyState)>> = MaybeUninit::uninit();
 
 unsafe extern "system" fn wnd_proc(
     hwnd: HWND,
@@ -20,7 +20,6 @@ unsafe extern "system" fn wnd_proc(
 ) -> LRESULT {
     match msg {
         WM_CREATE => {
-            assert!(SENDER.is_some());
             DefWindowProcW(hwnd, msg, w_param, l_param)
         }
         WM_INPUT => {
@@ -41,7 +40,7 @@ unsafe extern "system" fn wnd_proc(
                 size_of::<RAWINPUTHEADER>() as u32,
             );
 
-            let sender = SENDER.as_mut().unwrap();
+            let sender = &mut *SENDER.as_mut_ptr();
             let raw_input = &*(input_bytes.as_ptr() as *const RAWINPUT);
             match raw_input.header.dwType {
                 RIM_TYPEKEYBOARD => {
@@ -98,7 +97,7 @@ unsafe extern "system" fn wnd_proc(
 
 pub fn make_blank_window(sender: Sender<(Input, KeyState)>) -> HWND {
     unsafe {
-        SENDER = Some(sender);
+        SENDER.as_mut_ptr().write(sender);
         let hinstance = GetModuleHandleW(null_mut());
         let mut wclass = WNDCLASSW::default();
         let class_name_vec = OsStr::new("MyMsgClass\0").encode_wide().collect::<Vec<_>>();
@@ -126,25 +125,6 @@ pub fn make_blank_window(sender: Sender<(Input, KeyState)>) -> HWND {
     }
 }
 
-// unsafe extern "system" fn keyboard_hook(code: i32, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
-//     let sender = SENDER.as_ref().unwrap();
-//     let key_struct = &*(l_param as *const KBDLLHOOKSTRUCT);
-//     match w_param as u32 {
-//         WM_KEYDOWN => {
-//             sender.try_send((Input::KeyBoard(key_struct.vkCode as i32), KeyState::Down)).ok();
-//         },
-//         WM_KEYUP => {
-//             sender.try_send((Input::KeyBoard(key_struct.vkCode as i32), KeyState::Up)).ok();
-//         },
-//         _ => {}
-//     }
-//     CallNextHookEx(null_mut(), code, w_param, l_param)
-// }
-
-// unsafe fn set_keyboard_hook() {
-//     SetWindowsHookExW(WH_KEYBOARD_LL, Some(keyboard_hook), GetModuleHandleW(null_mut()), 0);
-// }
-
 unsafe fn register_raw_devices(hwnd: HWND) -> BOOL {
     let mut device_vec = vec![RAWINPUTDEVICE::default(); 2];
     let mouse_dev = &mut device_vec[0];
@@ -171,7 +151,7 @@ mod tests {
     use super::*;
     use std::ffi::OsString;
     use std::os::windows::ffi::OsStringExt;
-    use tokio::sync::mpsc;
+    use std::sync::mpsc;
     use winapi::shared::minwindef::DWORD;
     use winapi::shared::ntdef::{LANG_NEUTRAL, MAKELANGID, SUBLANG_DEFAULT};
     use winapi::um::errhandlingapi::GetLastError;
@@ -196,7 +176,7 @@ mod tests {
 
     #[test]
     fn check_window_created() {
-        let (sender, _) = mpsc::unbounded_channel();
+        let (sender, _) = mpsc::channel();
         let hwnd = make_blank_window(sender);
         if hwnd == null_mut() {
             unsafe { panic!("{:?}", error_to_string(GetLastError()).to_str()) }
@@ -205,7 +185,7 @@ mod tests {
 
     #[test]
     fn check_registering() {
-        let (sender, _) = mpsc::unbounded_channel();
+        let (sender, _) = mpsc::channel();
         let hwnd = make_blank_window(sender);
         unsafe {
             assert_ne!(register_raw_devices(hwnd), 0);
