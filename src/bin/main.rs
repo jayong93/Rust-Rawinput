@@ -1,7 +1,7 @@
 use rust_rawinput::Receiver;
 fn main() {
     let mut receiver = Receiver::new();
-    let mut runtime = tokio::runtime::current_thread::Runtime::new().unwrap();
+    let mut runtime = tokio::runtime::Runtime::new().unwrap();
     runtime.block_on(async {
         loop {
             let input = receiver.get_async().await;

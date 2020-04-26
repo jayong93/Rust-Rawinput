@@ -50,7 +50,7 @@ unsafe extern "system" fn wnd_proc(
                         RI_KEY_MAKE => {
                             // if the key has pressed
                             sender
-                                .try_send((
+                                .send((
                                     Input::KeyBoard(raw_keyboard_input.VKey as i32),
                                     KeyState::Down,
                                 ))
@@ -58,7 +58,7 @@ unsafe extern "system" fn wnd_proc(
                         }
                         RI_KEY_BREAK => {
                             sender
-                                .try_send((
+                                .send((
                                     Input::KeyBoard(raw_keyboard_input.VKey as i32),
                                     KeyState::Up,
                                 ))
@@ -83,7 +83,7 @@ unsafe extern "system" fn wnd_proc(
                     let raw_mouse_input = raw_input.data.mouse();
                     MOUSE_DATA_LIST.iter().fold(1, |acc, data| {
                         if raw_mouse_input.usButtonFlags & acc != 0 {
-                            sender.try_send(data.clone()).ok();
+                            sender.send(data.clone()).ok();
                         }
                         acc << 1
                     });
