@@ -1,6 +1,6 @@
 use super::inner_window::*;
 use winapi::shared::windef::HWND;
-use std::sync::mpsc::{self, TryRecvError};
+use std::sync::mpsc::{self, TryRecvError, RecvError};
 
 #[derive(Debug, Clone)]
 pub enum KeyState {
@@ -44,7 +44,11 @@ impl Receiver {
         }
     }
 
-    pub fn get(&mut self) -> Result<(Input, KeyState), TryRecvError> {
+    pub fn try_get(&mut self) -> Result<(Input, KeyState), TryRecvError> {
         self.input_recevier.try_recv()
+    }
+
+    pub fn get(&mut self) -> Result<(Input, KeyState), RecvError> {
+        self.input_recevier.recv()
     }
 }
