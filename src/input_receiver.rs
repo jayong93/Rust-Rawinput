@@ -45,11 +45,11 @@ impl Receiver {
         }
     }
 
-    pub fn try_get(&mut self) -> Result<(Input, KeyState), TryRecvError> {
+    pub fn try_get(&self) -> Result<(Input, KeyState), TryRecvError> {
         self.input_recevier.try_recv()
     }
 
-    pub fn get(&mut self) -> Result<(Input, KeyState), RecvError> {
+    pub fn get(&self) -> Result<(Input, KeyState), RecvError> {
         self.input_recevier.recv()
     }
 }
