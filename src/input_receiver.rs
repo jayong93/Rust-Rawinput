@@ -1,15 +1,16 @@
 use super::inner_window::*;
 use winapi::shared::windef::HWND;
 use std::sync::mpsc::{self, TryRecvError, RecvError};
+use std::cmp::{Eq, PartialEq};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum KeyState {
     Down,
     Up,
 }
 
 // Each input has a Virtual Key of Windows
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Input {
     Mouse(i32),
     KeyBoard(i32),
