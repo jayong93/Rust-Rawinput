@@ -25,8 +25,8 @@ impl fmt::Display for Input {
                 let scan_code = winuser::MapVirtualKeyA(*vk as _, winuser::MAPVK_VK_TO_VSC);
                 let mut name = [0u8; 16];
                 winuser::GetKeyNameTextA((scan_code << 16) as _, name.as_mut_ptr() as _, 16);
-                let c_name = std::ffi::CString::from_raw(name.as_mut_ptr() as _);
-                write!(f, "{}", c_name.into_string().unwrap())
+                let c_name = std::ffi::CStr::from_ptr(name.as_ptr() as _);
+                write!(f, "{}", c_name.to_str().unwrap())
             }
         }
     }

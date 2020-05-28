@@ -1,6 +1,6 @@
 [package]
 name = "rust_rawinput"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["최재용 <jayong93@gmail.com>"]
 edition = "2018"
 

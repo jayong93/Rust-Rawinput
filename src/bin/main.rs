@@ -7,7 +7,7 @@ fn main() {
         async {
             let mut receiver = Receiver::new();
             while let Some(input) = receiver.get().await {
-                println!("{:?}", input);
+                println!("{}, {:#?}", input.0, input.1);
             }
         }
     ).unwrap();
