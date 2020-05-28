@@ -152,7 +152,6 @@ mod tests {
     use super::*;
     use std::ffi::OsString;
     use std::os::windows::ffi::OsStringExt;
-    use std::sync::mpsc;
     use winapi::shared::minwindef::DWORD;
     use winapi::shared::ntdef::{LANG_NEUTRAL, MAKELANGID, SUBLANG_DEFAULT};
     use winapi::um::errhandlingapi::GetLastError;

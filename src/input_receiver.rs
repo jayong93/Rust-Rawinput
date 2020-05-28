@@ -21,7 +21,11 @@ use winapi::um::winuser;
 impl fmt::Display for Input {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Mouse(vk) | Self::KeyBoard(vk) => unsafe {
+            Self::Mouse(vk) => {
+                let key_names = ["MOUSE_LBUTTON", "MOUSE_RBUTTON", "CANCEL", "MOUSE_MBUTTON", "MOUSE_XBUTTON1", "MOUSE_XBUTTON2"];
+                write!(f, "{}", key_names[*vk as usize - 1])
+            }
+            Self::KeyBoard(vk) => unsafe {
                 let scan_code = winuser::MapVirtualKeyA(*vk as _, winuser::MAPVK_VK_TO_VSC);
                 let mut name = [0u8; 16];
                 winuser::GetKeyNameTextA((scan_code << 16) as _, name.as_mut_ptr() as _, 16);
