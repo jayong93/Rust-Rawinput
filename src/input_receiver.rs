@@ -1,7 +1,7 @@
 use super::inner_window::*;
 use winapi::shared::windef::HWND;
-use std::sync::mpsc::{self, TryRecvError, RecvError};
 use std::cmp::{Eq, PartialEq};
+use futures::channel::mpsc::{self, TryRecvError,};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum KeyState {
@@ -33,12 +33,12 @@ impl fmt::Display for Input {
 }
 
 pub struct Receiver {
-    input_recevier: mpsc::Receiver<(Input, KeyState)>,
+    input_recevier: mpsc::UnboundedReceiver<(Input, KeyState)>,
 }
 
 impl Receiver {
     pub fn new() -> Self {
-        let (sender, receiver) = mpsc::channel();
+        let (sender, receiver) = mpsc::unbounded();
         std::thread::spawn(Self::message_loop_fn(sender));
 
         Self {
@@ -46,7 +46,7 @@ impl Receiver {
         }
     }
 
-    fn message_loop_fn(sender: mpsc::Sender<(Input, KeyState)>) -> impl FnOnce() {
+    fn message_loop_fn(sender: mpsc::UnboundedSender<(Input, KeyState)>) -> impl FnOnce() {
         use winapi::shared::ntdef::TRUE;
         use winapi::um::winuser::*;
         move || {
@@ -61,11 +61,8 @@ impl Receiver {
         }
     }
 
-    pub fn try_get(&self) -> Result<(Input, KeyState), TryRecvError> {
-        self.input_recevier.try_recv()
-    }
-
-    pub fn get(&self) -> Result<(Input, KeyState), RecvError> {
-        self.input_recevier.recv()
+    pub async fn get(&mut self) -> Option<(Input, KeyState)> {
+        use futures::stream::StreamExt;
+        self.input_recevier.next().await
     }
 }

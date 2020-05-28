@@ -4,13 +4,14 @@ use std::mem::{size_of, MaybeUninit};
 use std::os::windows::ffi::OsStrExt;
 use std::ptr::null_mut;
 use std::sync::mpsc::{Sender};
+use futures::channel::mpsc::UnboundedSender;
 use winapi::shared::minwindef::{BOOL, LPARAM, LRESULT, WPARAM};
 use winapi::shared::ntdef::NULL;
 use winapi::shared::windef::HWND;
 use winapi::um::libloaderapi::GetModuleHandleW;
 use winapi::um::winuser::*;
 
-static mut SENDER: MaybeUninit<Sender<(Input, KeyState)>> = MaybeUninit::uninit();
+static mut SENDER: MaybeUninit<UnboundedSender<(Input, KeyState)>> = MaybeUninit::uninit();
 
 unsafe extern "system" fn wnd_proc(
     hwnd: HWND,
@@ -49,7 +50,7 @@ unsafe extern "system" fn wnd_proc(
                         RI_KEY_MAKE => {
                             // if the key has pressed
                             sender
-                                .send((
+                                .unbounded_send((
                                     Input::KeyBoard(raw_keyboard_input.VKey as i32),
                                     KeyState::Down,
                                 ))
@@ -57,7 +58,7 @@ unsafe extern "system" fn wnd_proc(
                         }
                         RI_KEY_BREAK => {
                             sender
-                                .send((
+                                .unbounded_send((
                                     Input::KeyBoard(raw_keyboard_input.VKey as i32),
                                     KeyState::Up,
                                 ))
@@ -82,7 +83,7 @@ unsafe extern "system" fn wnd_proc(
                     let raw_mouse_input = raw_input.data.mouse();
                     MOUSE_DATA_LIST.iter().fold(1, |acc, data| {
                         if raw_mouse_input.usButtonFlags & acc != 0 {
-                            sender.send(data.clone()).ok();
+                            sender.unbounded_send(data.clone()).ok();
                         }
                         acc << 1
                     });
@@ -95,7 +96,7 @@ unsafe extern "system" fn wnd_proc(
     }
 }
 
-pub fn make_blank_window(sender: Sender<(Input, KeyState)>) -> HWND {
+pub fn make_blank_window(sender: UnboundedSender<(Input, KeyState)>) -> HWND {
     unsafe {
         SENDER.as_mut_ptr().write(sender);
         let hinstance = GetModuleHandleW(null_mut());
@@ -176,7 +177,7 @@ mod tests {
 
     #[test]
     fn check_window_created() {
-        let (sender, _) = mpsc::channel();
+        let (sender, _) = futures::channel::mpsc::unbounded();
         let hwnd = make_blank_window(sender);
         if hwnd == null_mut() {
             unsafe { panic!("{:?}", error_to_string(GetLastError()).to_str()) }
@@ -185,7 +186,7 @@ mod tests {
 
     #[test]
     fn check_registering() {
-        let (sender, _) = mpsc::channel();
+        let (sender, _) = futures::channel::mpsc::unbounded();
         let hwnd = make_blank_window(sender);
         unsafe {
             assert_ne!(register_raw_devices(hwnd), 0);
