@@ -3,7 +3,6 @@ use std::ffi::OsStr;
 use std::mem::{size_of, MaybeUninit};
 use std::os::windows::ffi::OsStrExt;
 use std::ptr::null_mut;
-use std::sync::mpsc::{Sender};
 use futures::channel::mpsc::UnboundedSender;
 use winapi::shared::minwindef::{BOOL, LPARAM, LRESULT, WPARAM};
 use winapi::shared::ntdef::NULL;

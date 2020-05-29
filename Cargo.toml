@@ -1,6 +1,6 @@
 [package]
 name = "rust_rawinput"
-version = "0.4.2"
+version = "0.4.3"
 authors = ["최재용 <jayong93@gmail.com>"]
 edition = "2018"
 
@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 winapi = { version = "0.3.8", features = ["everything", "debug", "impl-default"] }
 futures = "0.3.*"
+serde = {version = "1.0.110", features = ["derive"]}
