@@ -23,6 +23,9 @@ unsafe extern "system" fn wnd_proc(
             DefWindowProcW(hwnd, msg, w_param, l_param)
         }
         WM_INPUT => {
+            #[cfg(feature = "print-debug")]
+            eprintln!("Get WM_INPUT Message!");
+
             let mut input_size = 0u32;
             GetRawInputData(
                 l_param as _,

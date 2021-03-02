@@ -10,3 +10,6 @@ edition = "2018"
 winapi = { version = "0.3.8", features = ["everything", "debug", "impl-default"] }
 futures = "0.3.*"
 serde = {version = "^1", features = ["derive"]}
+
+[features]
+print-debug = []
